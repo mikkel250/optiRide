@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-
 import {
   GoogleMap,
   LoadScript,
@@ -62,9 +61,9 @@ const TransitRoute = () => {
   const [directionsResponse, setDirectionsResponse] =
     useState<google.maps.DirectionsResult | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const [preferredTransitType, setPreferredTransitType] = useState<google.maps.TransitMode | null>(null);
+  const [preferredTransitType, setPreferredTransitType] = useState<string>("");
   const [transitRoutingPreference, setTransitRoutingPreference] =
-    useState<google.maps.TransitRoutePreference>(google.maps.TransitRoutePreference.FEWER_TRANSFERS);
+    useState<string>("");
   const [preferredDepartureTime, setPreferredDepartureTime] = useState<string>(
     new Date().toISOString()
   );
@@ -76,6 +75,7 @@ const TransitRoute = () => {
         {
           origin: debouncedOrigin,
           destination: debouncedDestination,
+          travelMode: google.maps.TravelMode.TRANSIT,
           // alternatives: [
           //   {
           //     mode: google.maps.TravelMode.TRANSIT,
@@ -85,11 +85,11 @@ const TransitRoute = () => {
           //     mode: google.maps.TravelMode.BICYCLING,
           //   },
           // ],
-          transitOptions: {
-            ...(preferredTransitType && {modes: [preferredTransitType]}), // Only include modes property if preferredTransitType is truthy
-            routingPreference: transitRoutingPreference,
-            departureTime: new Date(preferredDepartureTime),
-          },
+          // transitOptions: {
+          //   modes: [preferredTransitType],
+          //   routingPreference: transitRoutingPreference,
+          //   departureTime: preferredDepartureTime,
+          // },
         },
         (result, status) => {
           if (status === google.maps.DirectionsStatus.OK) {
@@ -179,18 +179,25 @@ const TransitRoute = () => {
       >
         <div>
           <div className='userPreferences'>
-            <label htmlFor='preferredTransitType'>
+          <label htmlFor='preferredTransitType'>
               Preferred Transit Type:
             </label>
             <select
               id='preferredTransitType'
               name='preferredTransitType'
               value={preferredTransitType || ''}
-              onChange={(e) => setPreferredTransitType(e.target.value as google.maps.TransitMode)}
+              onChange={(e) =>
+                setPreferredTransitType(
+                  e.target.value as google.maps.TransitMode
+                )
+              }
             >
+              <option value="">None</option>
               <option value={google.maps.TransitMode.BUS}>Bus</option>
               <option value={google.maps.TransitMode.SUBWAY}>Subway</option>
-              <option value={google.maps.TransitMode.RAIL}>Rail (Train, Tram, Monorail)</option>
+              <option value={google.maps.TransitMode.RAIL}>
+                Rail (Train, Tram, Monorail)
+              </option>
             </select>
             <label htmlFor='transitRoutingPreference'>
               Transit Routing Preference (fewer transfers, less biking):
@@ -198,10 +205,20 @@ const TransitRoute = () => {
             <select
               id='transitRoutingPreference'
               value={transitRoutingPreference}
-              onChange={(e) => setTransitRoutingPreference(e.target.value as google.maps.TransitRoutePreference)}
+              onChange={(e) =>
+                setTransitRoutingPreference(
+                  e.target.value as google.maps.TransitRoutePreference
+                )
+              }
             >
-              <option value={google.maps.TransitRoutePreference.LESS_WALKING}>Less Biking</option>
-              <option value={google.maps.TransitRoutePreference.FEWER_TRANSFERS}>Fewer Transfers</option>
+              <option value={google.maps.TransitRoutePreference.LESS_WALKING}>
+                Less Biking
+              </option>
+              <option
+                value={google.maps.TransitRoutePreference.FEWER_TRANSFERS}
+              >
+                Fewer Transfers
+              </option>
             </select>
             <label htmlFor='preferredDepartureDate'>Departure Date:</label>
             <input
@@ -213,6 +230,7 @@ const TransitRoute = () => {
                 setPreferredDepartureTime(`${e.target.value}T${time}:00.000Z`);
               }}
             />
+
 
             <select
               id='preferredDepartureTime'
@@ -251,7 +269,7 @@ const TransitRoute = () => {
             />
           </Autocomplete>
         </div>
-        
+
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={center}
