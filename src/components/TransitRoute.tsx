@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
-import parse from 'html-react-parser';
-import DOMPurify from 'dompurify';
+import parse from "html-react-parser";
+import DOMPurify from "dompurify";
+import Routeform from './RouteForm';
 import {
   GoogleMap,
   DirectionsRenderer,
-  Autocomplete,
   useJsApiLoader,
 } from "@react-google-maps/api";
-
 
 const libraries: (
   | "places"
@@ -17,10 +16,6 @@ const libraries: (
   | "visualization"
 )[] = ["places"];
 
-interface Location {
-  lat: number;
-  lng: number;
-}
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -38,26 +33,11 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-function generateTimeOptions() {
-  let options = [];
-
-  for (let i = 0; i < 48; i++) {
-    let hours = Math.floor(i / 2);
-    let minutes = i % 2 === 0 ? "00" : "30";
-    let time = `${hours.toString().padStart(2, "0")}:${minutes}`;
-
-    options.push(time);
-  }
-
-  return options;
-}
-
-
 const TransitRoute = () => {
   const [directions, setDirections] =
     useState<google.maps.DirectionsResult | null>(null);
-  const [origin, setOrigin] = useState<Location | string>("");
-  const [destination, setDestination] = useState<Location | string>("");
+  const [origin, setOrigin] = useState<google.maps.LatLngLiteral | string>("");
+  const [destination, setDestination] = useState<google.maps.LatLngLiteral | string>("");
   // const [apiError, setApiError] = useState<boolean>(false);
   const debouncedOrigin = useDebounce(origin, 500);
   const debouncedDestination = useDebounce(destination, 500);
@@ -66,7 +46,7 @@ const TransitRoute = () => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [preferredTransitType, setPreferredTransitType] = useState<string>("");
   const [transitRoutingPreference, setTransitRoutingPreference] =
-    useState<string>("");
+    useState<string>("FEWER_TRANSFERS");
   const [preferredDepartureTime, setPreferredDepartureTime] = useState<string>(
     new Date().toISOString()
   );
@@ -75,7 +55,7 @@ const TransitRoute = () => {
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: `${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`,
     libraries,
-  })
+  });
 
   useEffect(() => {
     if (debouncedOrigin && debouncedDestination) {
@@ -94,11 +74,11 @@ const TransitRoute = () => {
           //     mode: google.maps.TravelMode.BICYCLING,
           //   },
           // ],
-          // transitOptions: {
-          //   modes: [preferredTransitType],
-          //   routingPreference: transitRoutingPreference,
-          //   departureTime: preferredDepartureTime,
-          // },
+          transitOptions: {
+            modes: [preferredTransitType as google.maps.TransitMode],
+            routingPreference: transitRoutingPreference as google.maps.TransitRoutePreference,
+            departureTime: new Date(preferredDepartureTime),
+          },
         },
         (result, status) => {
           if (status === google.maps.DirectionsStatus.OK) {
@@ -128,54 +108,21 @@ const TransitRoute = () => {
     if (directions && directions.routes[0] && directions.routes[0].legs[0]) {
       setSteps(directions.routes[0].legs[0].steps);
     }
-  }, [directions])
+  }, [directions]);
 
   const containerStyle = {
     width: "100%",
     height: "600px",
   };
 
-  const center: Location = {
+  const center: google.maps.LatLngLiteral = {
     lat: 37.7749,
     lng: -122.4194,
   };
 
-  const originRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const destinationRef = useRef<google.maps.places.Autocomplete | null>(null);
+ 
 
-  const onOriginLoad = (autocomplete: google.maps.places.Autocomplete) => {
-    originRef.current = autocomplete;
-  };
-
-  const onOriginPlaceChanged = () => {
-    if (originRef.current !== null) {
-      const place = originRef.current.getPlace();
-      if (place && place.geometry && place.geometry.location) {
-        setOrigin({
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-        });
-      }
-    }
-  };
-
-  const onDestinationLoad = (autocomplete: google.maps.places.Autocomplete) => {
-    destinationRef.current = autocomplete;
-  };
-
-  const onDestinationPlaceChanged = () => {
-    if (destinationRef.current !== null) {
-      const place = destinationRef.current.getPlace();
-      if (place && place.geometry && place.geometry.location) {
-        const destination = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-        };
-        setDestination(destination);
-        // fetchNearestTransitStations(destination);
-      }
-    }
-  };
+  
 
   // a useEffect hook to check if the process.env.REACT_APP_GOOGLE_MAPS_API_KEY exists
   // useEffect(() => {
@@ -187,136 +134,55 @@ const TransitRoute = () => {
   // if (apiError) {
   //   return <div>API key not found</div>;
   // } else {
-    const renderMap = () => {
-      return (
-        <>
-          <div>
-            <div className='userPreferences'>
-            <label htmlFor='preferredTransitType'>
-                Preferred Transit Type:
-              </label>
-              <select
-                id='preferredTransitType'
-                name='preferredTransitType'
-                value={preferredTransitType || ''}
-                onChange={(e) =>
-                  setPreferredTransitType(
-                    e.target.value as google.maps.TransitMode
-                  )
-                }
-              >
-                <option value="">None</option>
-                <option value={google.maps.TransitMode.BUS}>Bus</option>
-                <option value={google.maps.TransitMode.SUBWAY}>Subway</option>
-                <option value={google.maps.TransitMode.RAIL}>
-                  Rail (Train, Tram, Monorail)
-                </option>
-              </select>
-              <label htmlFor='transitRoutingPreference'>
-                Transit Routing Preference (fewer transfers, less biking):
-              </label>
-              <select
-                id='transitRoutingPreference'
-                value={transitRoutingPreference}
-                onChange={(e) =>
-                  setTransitRoutingPreference(
-                    e.target.value as google.maps.TransitRoutePreference
-                  )
-                }
-              >
-                <option value={google.maps.TransitRoutePreference.LESS_WALKING}>
-                  Less Biking
-                </option>
-                <option
-                  value={google.maps.TransitRoutePreference.FEWER_TRANSFERS}
-                >
-                  Fewer Transfers
-                </option>
-              </select>
-              <label htmlFor='preferredDepartureDate'>Departure Date:</label>
-              <input
-                type='date'
-                id='preferredDepartureDate'
-                value={preferredDepartureTime.slice(0, 10)}
-                onChange={(e) => {
-                  const time = preferredDepartureTime.slice(11, 16);
-                  setPreferredDepartureTime(`${e.target.value}T${time}:00.000Z`);
-                }}
-              />
-  
-  
-              <select
-                id='preferredDepartureTime'
-                name='preferredDepartureTime'
-                value={preferredDepartureTime.slice(11, 16)}
-                onChange={(e) => {
-                  const date = preferredDepartureTime.slice(0, 10);
-                  setPreferredDepartureTime(`${date}T${e.target.value}`);
-                }}
-              >
-                {generateTimeOptions().map((time, index) => (
-                  <option key={index} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <label htmlFor='origin'>Origin:</label>
-            <Autocomplete
-              onLoad={onOriginLoad}
-              onPlaceChanged={onOriginPlaceChanged}
-            >
-              <input id='origin' type='text' placeholder='Enter starting point' />
-            </Autocomplete>
-          </div>
-          <div>
-            <label htmlFor='destination'>Destination:</label>
-            <Autocomplete
-              onLoad={onDestinationLoad}
-              onPlaceChanged={onDestinationPlaceChanged}
-            >
-              <input
-                id='destination'
-                type='text'
-                placeholder='Enter destination'
-              />
-            </Autocomplete>
-          </div>
-  
-          <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={center}
-            zoom={10}
-            onLoad={(map) => {
-              mapRef.current = map;
-            }}
-          >
-            {directions && (
-              <DirectionsRenderer
-                options={{
-                  directions: directions,
-                }}
-              />
-            )}
-          </GoogleMap>
-          <div className="step-instructions">
-            {steps && steps.map((step, i) => (
+  const renderMap = () => {
+    return (
+      <>
+      <RouteForm
+        origin={origin}
+        destination={destination}
+        setOrigin={setOrigin}
+        setDestination={setDestination}
+        preferredTransitType={preferredTransitType}
+        setPreferredTransitType={setPreferredTransitType}
+        transitRoutingPreference={transitRoutingPreference}
+        setTransitRoutingPreference={setTransitRoutingPreference}
+        preferredDepartureTime={preferredDepartureTime}
+        setPreferredDepartureTime={setPreferredDepartureTime}
+      />
+        <GoogleMap
+          mapContainerStyle={containerStyle}
+          center={center}
+          zoom={10}
+          onLoad={(map) => {
+            mapRef.current = map;
+          }}
+        >
+          {directions && (
+            <DirectionsRenderer
+              options={{
+                directions: directions,
+              }}
+            />
+          )}
+        </GoogleMap>
+        <div className='step-instructions'>
+          {steps &&
+            steps.map((step, i) => (
               <div key={i}>
                 {parse(DOMPurify.sanitize(step.instructions))}
                 {step.distance && <p>Distance: {step.distance.text}</p>}
                 {step.duration && <p>Duration: {step.duration.text}</p>}
               </div>
             ))}
-          </div>
-        </>
-      );
-      
-    }
-    if (loadError) {
-      return <div>Error! Map cannot be loaded!</div>
-    }
+        </div>
+      </>
+    );
+  };
+  if (loadError) {
+    return <div>Error! Map cannot be loaded!</div>;
+  }
 
-    return isLoaded ? renderMap() : <div>Map is loading....</div>
+  return isLoaded ? renderMap() : <div>Map is loading....</div>;
   // }
 };
 

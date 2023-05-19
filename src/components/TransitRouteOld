@@ -222,7 +222,7 @@ const TransitRoute = () => {
             <input
               type='date'
               id='preferredDepartureDate'
-              value={new Date().slice(0, 10)}
+              value={preferredDepartureTime.slice(0, 10)}
               onChange={(e) => {
                 const time = preferredDepartureTime.slice(11, 16);
                 setPreferredDepartureTime(`${e.target.value}T${time}:00.000Z`);
