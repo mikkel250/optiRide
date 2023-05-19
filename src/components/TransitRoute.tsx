@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
+import parse from 'html-react-parser';
+import DOMPurify from 'dompurify';
 import {
   GoogleMap,
   DirectionsRenderer,
   Autocomplete,
   useJsApiLoader,
 } from "@react-google-maps/api";
+
 
 const libraries: (
   | "places"
@@ -67,6 +70,7 @@ const TransitRoute = () => {
   const [preferredDepartureTime, setPreferredDepartureTime] = useState<string>(
     new Date().toISOString()
   );
+  const [steps, setSteps] = useState<google.maps.DirectionsStep[]>([]);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: `${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`,
@@ -119,6 +123,12 @@ const TransitRoute = () => {
       setDirections(directionsResponse);
     }
   }, [directionsResponse, directions]);
+
+  useEffect(() => {
+    if (directions && directions.routes[0] && directions.routes[0].legs[0]) {
+      setSteps(directions.routes[0].legs[0].steps);
+    }
+  }, [directions])
 
   const containerStyle = {
     width: "100%",
@@ -289,6 +299,15 @@ const TransitRoute = () => {
               />
             )}
           </GoogleMap>
+          <div className="step-instructions">
+            {steps && steps.map((step, i) => (
+              <div key={i}>
+                {parse(DOMPurify.sanitize(step.instructions))}
+                {step.distance && <p>Distance: {step.distance.text}</p>}
+                {step.duration && <p>Duration: {step.duration.text}</p>}
+              </div>
+            ))}
+          </div>
         </>
       );
       
