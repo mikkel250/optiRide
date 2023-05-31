@@ -1,3 +1,4 @@
+// RouteForm.tsx
 import React, { useRef, useState } from "react";
 import { Autocomplete } from "@react-google-maps/api";
 
@@ -49,7 +50,6 @@ const RouteForm: React.FC<RouteFormProps> = ({
     originRef.current = autocomplete;
   };
 
-
   const onOriginPlaceChanged = () => {
     if (originRef.current !== null) {
       const place = originRef.current.getPlace();
@@ -61,7 +61,6 @@ const RouteForm: React.FC<RouteFormProps> = ({
       }
     }
   };
-
   
   const onDestinationPlaceChanged = () => {
     if (destinationRef.current !== null) {
@@ -131,11 +130,11 @@ const RouteForm: React.FC<RouteFormProps> = ({
           value={preferredDepartureTime.slice(11, 16)}
           onChange={(e) => {
             const date = preferredDepartureTime.slice(0, 10);
-            const timeValue = e.target.textContent === "Now" ? new Date().toISOString() : `${date}T${e.target.value}`;
+            const timeValue = e.target.textContent === "now" ? new Date().toISOString() : `${date}T${e.target.value}`;
             setPreferredDepartureTime(timeValue);
           }}
         >
-          <option value={new Date().toISOString()}>Now</option>
+          <option value="now">Now</option>
           {generateTimeOptions().map((time, index) => (
             <option key={index} value={time}>
               {time}

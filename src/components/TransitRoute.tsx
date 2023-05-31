@@ -1,21 +1,13 @@
+// TransitRoute.tsx
 import React, { useState, useRef, useEffect } from "react";
 import parse from "html-react-parser";
 import DOMPurify from "dompurify";
-import Routeform from './RouteForm';
+import RouteForm from './RouteForm';
 import {
   GoogleMap,
   DirectionsRenderer,
   useJsApiLoader,
 } from "@react-google-maps/api";
-
-const libraries: (
-  | "places"
-  | "drawing"
-  | "geometry"
-  | "localContext"
-  | "visualization"
-)[] = ["places"];
-
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -38,11 +30,10 @@ const TransitRoute = () => {
     useState<google.maps.DirectionsResult | null>(null);
   const [origin, setOrigin] = useState<google.maps.LatLngLiteral | string>("");
   const [destination, setDestination] = useState<google.maps.LatLngLiteral | string>("");
-  // const [apiError, setApiError] = useState<boolean>(false);
   const debouncedOrigin = useDebounce(origin, 500);
   const debouncedDestination = useDebounce(destination, 500);
-  const [directionsResponse, setDirectionsResponse] =
-    useState<google.maps.DirectionsResult | null>(null);
+  // const [directionsResponse, setDirectionsResponse] =
+    // useState<google.maps.DirectionsResult | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [preferredTransitType, setPreferredTransitType] = useState<string>("");
   const [transitRoutingPreference, setTransitRoutingPreference] =
@@ -51,11 +42,22 @@ const TransitRoute = () => {
     new Date().toISOString()
   );
   const [steps, setSteps] = useState<google.maps.DirectionsStep[]>([]);
+  const libraries: (
+    | "places"
+    | "drawing"
+    | "geometry"
+    | "localContext"
+    | "visualization"
+  )[] = React.useMemo(() => ["places"], []);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: `${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`,
     libraries,
   });
+
+  useEffect(() => {
+    setDirections(null);
+  }, [debouncedOrigin, debouncedDestination]);
 
   useEffect(() => {
     if (debouncedOrigin && debouncedDestination) {
@@ -75,14 +77,14 @@ const TransitRoute = () => {
           //   },
           // ],
           transitOptions: {
-            modes: [preferredTransitType as google.maps.TransitMode],
+            modes: preferredTransitType ? [preferredTransitType as google.maps.TransitMode] : undefined,
             routingPreference: transitRoutingPreference as google.maps.TransitRoutePreference,
             departureTime: new Date(preferredDepartureTime),
           },
         },
         (result, status) => {
           if (status === google.maps.DirectionsStatus.OK) {
-            setDirectionsResponse(result);
+            setDirections(result);
           } else {
             console.log(`error fetching directions ${result}`);
           }
@@ -98,15 +100,19 @@ const TransitRoute = () => {
   ]);
 
   // useEffect to check if directionsResponse exists and is not the same as the previously set directions object
-  useEffect(() => {
-    if (directionsResponse && directionsResponse !== directions) {
-      setDirections(directionsResponse);
-    }
-  }, [directionsResponse, directions]);
+  // useEffect(() => {
+  //   if (directionsResponse && directionsResponse !== directions) {
+  //     setDirections(directionsResponse);
+  //   }
+  // }, [directionsResponse, directions]);
 
   useEffect(() => {
+    let allSteps: google.maps.DirectionsStep[] = [];
     if (directions && directions.routes[0] && directions.routes[0].legs[0]) {
-      setSteps(directions.routes[0].legs[0].steps);
+      directions.routes[0].legs.forEach((leg) => {
+        allSteps.push(...leg.steps);
+      });
+      setSteps(allSteps);
     }
   }, [directions]);
 
@@ -119,10 +125,6 @@ const TransitRoute = () => {
     lat: 37.7749,
     lng: -122.4194,
   };
-
- 
-
-  
 
   // a useEffect hook to check if the process.env.REACT_APP_GOOGLE_MAPS_API_KEY exists
   // useEffect(() => {
@@ -159,6 +161,7 @@ const TransitRoute = () => {
         >
           {directions && (
             <DirectionsRenderer
+            key={JSON.stringify(directions)}
               options={{
                 directions: directions,
               }}
