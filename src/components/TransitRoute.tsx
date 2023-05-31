@@ -9,29 +9,12 @@ import {
   useJsApiLoader,
 } from "@react-google-maps/api";
 
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
 const TransitRoute = () => {
   const [directions, setDirections] =
     useState<google.maps.DirectionsResult | null>(null);
+    const [directionsKey, setDirectionsKey] = useState<number>(0);
   const [origin, setOrigin] = useState<google.maps.LatLngLiteral | string>("");
   const [destination, setDestination] = useState<google.maps.LatLngLiteral | string>("");
-  const debouncedOrigin = useDebounce(origin, 500);
-  const debouncedDestination = useDebounce(destination, 500);
   // const [directionsResponse, setDirectionsResponse] =
     // useState<google.maps.DirectionsResult | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -55,27 +38,45 @@ const TransitRoute = () => {
     libraries,
   });
 
-  useEffect(() => {
-    setDirections(null);
-  }, [debouncedOrigin, debouncedDestination]);
-
-  useEffect(() => {
-    if (debouncedOrigin && debouncedDestination) {
+  // useEffect(() => {
+  //   if (origin && destination) {
+  //     const DirectionsService = new google.maps.DirectionsService();
+  //     DirectionsService.route(
+  //       {
+  //         origin: origin,
+  //         destination: destination,
+  //         travelMode: google.maps.TravelMode.TRANSIT,
+  //         transitOptions: {
+  //           modes: preferredTransitType ? [preferredTransitType as google.maps.TransitMode] : undefined,
+  //           routingPreference: transitRoutingPreference as google.maps.TransitRoutePreference,
+  //           departureTime: new Date(preferredDepartureTime),
+  //         },
+  //       },
+  //       (result, status) => {
+  //         if (status === google.maps.DirectionsStatus.OK) {
+  //           setDirections(result);
+  //         } else {
+  //           console.log(`error fetching directions ${result}`);
+  //         }
+  //       }
+  //     );
+  //   }
+  // }, [
+  //   origin,
+  //   destination,
+  //   preferredTransitType,
+  //   transitRoutingPreference,
+  //   preferredDepartureTime,
+  // ]);
+  
+  const fetchDirections = () => {
+    if (origin && destination) {
       const DirectionsService = new google.maps.DirectionsService();
       DirectionsService.route(
         {
-          origin: debouncedOrigin,
-          destination: debouncedDestination,
+          origin: origin,
+          destination: destination,
           travelMode: google.maps.TravelMode.TRANSIT,
-          // alternatives: [
-          //   {
-          //     mode: google.maps.TravelMode.TRANSIT,
-          //     origin_mode: google.maps.TravelMode.BICYCLING,
-          //   },
-          //   {
-          //     mode: google.maps.TravelMode.BICYCLING,
-          //   },
-          // ],
           transitOptions: {
             modes: preferredTransitType ? [preferredTransitType as google.maps.TransitMode] : undefined,
             routingPreference: transitRoutingPreference as google.maps.TransitRoutePreference,
@@ -85,27 +86,17 @@ const TransitRoute = () => {
         (result, status) => {
           if (status === google.maps.DirectionsStatus.OK) {
             setDirections(result);
+            setDirectionsKey(prevKey => prevKey + 1);
           } else {
             console.log(`error fetching directions ${result}`);
           }
         }
       );
+    } else {
+      alert("fields cannot be empty!");
     }
-  }, [
-    debouncedOrigin,
-    debouncedDestination,
-    preferredTransitType,
-    transitRoutingPreference,
-    preferredDepartureTime,
-  ]);
-
-  // useEffect to check if directionsResponse exists and is not the same as the previously set directions object
-  // useEffect(() => {
-  //   if (directionsResponse && directionsResponse !== directions) {
-  //     setDirections(directionsResponse);
-  //   }
-  // }, [directionsResponse, directions]);
-
+  }
+  
   useEffect(() => {
     let allSteps: google.maps.DirectionsStep[] = [];
     if (directions && directions.routes[0] && directions.routes[0].legs[0]) {
@@ -126,16 +117,6 @@ const TransitRoute = () => {
     lng: -122.4194,
   };
 
-  // a useEffect hook to check if the process.env.REACT_APP_GOOGLE_MAPS_API_KEY exists
-  // useEffect(() => {
-  //   if (!process.env.REACT_APP_GOOGLE_MAPS_API_KEY) {
-  //     setApiError(true);
-  //   }
-  // }, []);
-
-  // if (apiError) {
-  //   return <div>API key not found</div>;
-  // } else {
   const renderMap = () => {
     return (
       <>
@@ -151,6 +132,7 @@ const TransitRoute = () => {
         preferredDepartureTime={preferredDepartureTime}
         setPreferredDepartureTime={setPreferredDepartureTime}
       />
+      <button onClick={fetchDirections}>Get Directions</button>
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={center}
@@ -161,7 +143,7 @@ const TransitRoute = () => {
         >
           {directions && (
             <DirectionsRenderer
-            key={JSON.stringify(directions)}
+            key={directionsKey}
               options={{
                 directions: directions,
               }}
