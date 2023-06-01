@@ -154,9 +154,8 @@ const TransitRoute = () => {
           {steps &&
             steps.map((step, i) => (
               <div key={i}>
-                {parse(DOMPurify.sanitize(step.instructions))}
-                {step.distance && <p>Distance: {step.distance.text}</p>}
-                {step.duration && <p>Duration: {step.duration.text}</p>}
+                {step.duration && <span className="bold">{step.duration.text}</span>},  {step.distance && <span className="bold">{step.distance.text}</span>}.  {parse(DOMPurify.sanitize(step.instructions))}
+                <input type="checkbox" name="" id="" value={i}/>
               </div>
             ))}
         </div>
